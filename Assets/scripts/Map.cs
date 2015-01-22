@@ -80,7 +80,7 @@ public class Map : MonoBehaviour {
 		//print(Manager.current_lvl_nb);
 		init_map_cells(lvlInfos[Manager.current_lvl_nb-1].GetComponent<Lvl_infos>().levelDesign);
 
-		switch (Manager.current_lvl_nb) {
+		/*switch (Manager.current_lvl_nb) {
 			case 1:
 				//init_map_cells(mapLvl1);
 				// tmp set some player cells manually here :
@@ -122,7 +122,7 @@ public class Map : MonoBehaviour {
 				// tmp set some player cells manually here :
 				set_cell(7, 8, 2, SPLIT_CELL);
 			break;
-		}
+		}*/
 	}
 	
 	void init_map_cells (Texture2D[] map_floors) {
