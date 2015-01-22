@@ -15,23 +15,22 @@ public class Manager : MonoBehaviour {
 	public static bool fail, success;
 	public static byte current_lvl_nb;
 
-	public string[] lvlNames;
-	//public byte currentLvlNb;
-	public byte[] cubesByLvl;
+	public GameObject[] lvlInfos;
 
-	public int stepBetweenSpawns;
 	public float secBetweenEachStep;
 	public GameObject redCube, greenCube, blueCube;
 
-	public GUIStyle playBt, stopBt, menuBts;
+	public GUIStyle playBt, stopBt, menuBts, actionQtt;
 	public GUIStyle[] actionsBts;
-	//public Texture[] actionsBts;
 	public Texture titleGui, failGui, victoryGui;
 
-	private byte _cubes_nb_this_lvl;
-	private int _map_ready;
+	private bool _can_click;
+	private byte _current_input, _cubes_nb_this_lvl;
+	private byte[] _inputs_amounts, _inputs_index;
+	private int _map_ready, _steps_between_spawns;
 	private float _new_step_timer;
 	private Transform _map, _cubes;
+	private Camera _camera;
 
 	void Awake () {
 
@@ -41,9 +40,24 @@ public class Manager : MonoBehaviour {
 		current_lvl_nb = 0;
 		current_state = STATE_MENU;
 		fail = success = false;
+		_can_click = true;
+		_inputs_amounts = new byte[0xff];
+		_inputs_index = new byte[10] {
+			Map.ARROW_CELL*Map.DIR_LEFT,
+			Map.ARROW_CELL*Map.DIR_RIGHT,
+			Map.ARROW_CELL*Map.DIR_UP,
+			Map.ARROW_CELL*Map.DIR_DOWN,
+			Map.CONV_CELL*Map.DIR_LEFT,
+			Map.CONV_CELL*Map.DIR_RIGHT,
+			Map.CONV_CELL*Map.DIR_UP,
+			Map.CONV_CELL*Map.DIR_DOWN,
+			Map.SPLIT_CELL,
+			Map.STOP_CELL
+		};
 		_new_step_timer = secBetweenEachStep;
 		_map = GameObject.Find("map").transform;
 		_cubes = GameObject.Find("cubes").transform;
+		_camera = Camera.main;
 	}
 
 	void init_menu_state () {
@@ -60,13 +74,27 @@ public class Manager : MonoBehaviour {
 			Destroy(_cubes.GetChild(i).gameObject);
 		}
 		fail = success = false;
-		_cubes_nb_this_lvl = cubesByLvl[current_lvl_nb-1];
+		_map.SendMessage("Init_map_next"); // reset map
+		_current_input = Map.HOLE;
+		_cubes_nb_this_lvl = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().cubesNbPerColor;
+		_inputs_amounts[_inputs_index[0]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().leftArrowsNb;
+		_inputs_amounts[_inputs_index[1]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().rightArrowsNb;
+		_inputs_amounts[_inputs_index[2]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().upArrowsNb;
+		_inputs_amounts[_inputs_index[3]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().downArrowsNb;
+		_inputs_amounts[_inputs_index[4]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().leftConvsNb;
+		_inputs_amounts[_inputs_index[5]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().rightConvsNb;
+		_inputs_amounts[_inputs_index[6]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().upConvsNb;
+		_inputs_amounts[_inputs_index[7]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().downConvsNb;
+		_inputs_amounts[_inputs_index[8]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().splitsNb;
+		_inputs_amounts[_inputs_index[9]] = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().stopsNb;
+		
 		current_state = STATE_THINKING;
 	}
 
 	void init_anim_state () {
 
-		step_count = (uint)stepBetweenSpawns - 1;
+		_steps_between_spawns = lvlInfos[current_lvl_nb-1].GetComponent<Lvl_infos>().stepsBetweenSpawns;
+		step_count = (uint)_steps_between_spawns - 1;
 		current_state = STATE_ANIMATION;
 	}
 
@@ -87,7 +115,7 @@ public class Manager : MonoBehaviour {
 				_new_step_timer = Time.time + secBetweenEachStep;
 				step_count++;
 
-				if (step_count>stepBetweenSpawns && _cubes.childCount<=0) {
+				if (step_count>_steps_between_spawns && _cubes.childCount<=0) {
 					success = true;
 				}
 
@@ -113,7 +141,7 @@ public class Manager : MonoBehaviour {
 					}
 				}
 
-				if (step_count%stepBetweenSpawns==0 && _cubes_nb_this_lvl>0) {
+				if (step_count%_steps_between_spawns==0 && _cubes_nb_this_lvl>0) {
 
 					_cubes_nb_this_lvl--;
 
@@ -166,43 +194,87 @@ public class Manager : MonoBehaviour {
 
 				GUI.DrawTexture(new Rect(Screen.width*0.1f,Screen.height*0.1f,Screen.width*0.8f,Screen.height*0.1f), titleGui, ScaleMode.ScaleToFit);
 
-				for (int i=0; i<lvlNames.Length; i++) {
+				for (int i=0; i<lvlInfos.Length; i++) {
 
 					float x = Screen.width*0.075f + Screen.width*(i%3)*0.3f;
 					float y = Screen.height*0.33f + Screen.height*((byte)i/3|0)*0.2f;
 					float w = Screen.width*0.25f;
 					float h = Screen.height*0.1f;
+					int i1 = i+1;
 
 					if (is_mouse_hover(x, y, w, h)) {
-						if (_map_ready != i) {
-							_map_ready = i;
-							_map.SendMessage("Init_map", (byte)i);
+						if (_map_ready != i1) {
+							_map_ready = i1;
+							_map.SendMessage("Init_map", (byte)i1);
 						}
 					}
 
-					if (GUI.Button(new Rect(x, y, w, h), lvlNames[i], menuBts)) {
+					if (GUI.Button(new Rect(x, y, w, h), lvlInfos[i].GetComponent<Lvl_infos>().lvlName, menuBts)) {
 						init_think_state();
 					}
 				}
 			break;
 			case STATE_THINKING:
 
-				float bt_size = Screen.height*0.05f;
+				float bt_size = Screen.height*0.06f;
 
 				if (GUI.Button(new Rect(Screen.width*0.05f, Screen.height*0.05f, bt_size, bt_size), "", playBt)) {
 					init_anim_state();
 				}
-				if (GUI.Button(new Rect(Screen.width*0.05f, Screen.height*0.125f, bt_size, bt_size), "", stopBt)) {
+				if (GUI.Button(new Rect(Screen.width*0.05f, Screen.height*0.15f, bt_size, bt_size), "", stopBt)) {
 					init_menu_state();
 				}
 
-        		GUIUtility.RotateAroundPivot(-My_camera.longitude, new Vector2(Screen.width*0.9f + bt_size*0.5f, Screen.height*0.1f + bt_size*0.5f));
+        		for (int i=0, j=0; i<10; i++) {
+        			
+        			if (_inputs_amounts[_inputs_index[i]] > 0) {
 
-				if (GUI.Button(new Rect(Screen.width*0.9f, Screen.height*0.1f, bt_size, bt_size), "", actionsBts[0])) {
-					print("ok");
+	        			float offset_x = Screen.width*0.9f;
+	        			float offset_y = Screen.height*0.1f;
+	        			float y = j * bt_size * 1.5f;
+	        			float rotation = 0;
+
+	        			if (_inputs_index[i]%Map.DIR_LEFT == 0) {
+							rotation = 90;
+						} else if (_inputs_index[i]%Map.DIR_RIGHT == 0) {
+							rotation = -90;
+						} else if (_inputs_index[i]%Map.DIR_UP == 0) {
+							rotation = 180;
+						} else if (_inputs_index[i]%Map.DIR_DOWN == 0) {
+							rotation = 0;
+						}
+
+	        			GUIUtility.RotateAroundPivot(-My_camera.longitude + rotation, new Vector2(offset_x + bt_size*0.5f, offset_y + y + bt_size*0.5f));
+						
+						if (GUI.Button(new Rect(offset_x, offset_y + y, bt_size, bt_size), "", actionsBts[i])) {
+							_current_input = _inputs_index[i];
+						}
+
+						GUI.matrix = Matrix4x4.identity;
+
+						GUI.Box(new Rect(offset_x + bt_size*0.88f, offset_y + y + bt_size*0.88f, bt_size*0.5f, bt_size*0.5f), _inputs_amounts[_inputs_index[i]].ToString(), actionQtt);
+						
+						j++;
+        			}
+        		}
+
+
+
+				Vector3 _mouse_pos = _camera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, 1000));
+				RaycastHit hit;
+				Ray ray = new Ray(_camera.transform.position, _mouse_pos-_camera.transform.position);
+
+				if (Physics.Raycast(ray, out hit)) {
+					//print(hit.transform.name);
+					
+					hit.collider.SendMessage("preview", _current_input, SendMessageOptions.DontRequireReceiver);
+					//Debug.DrawLine(_camera.transform.position, hit.transform.position, Color.red, 0.5f, true);
+
+					if (Input.GetAxis("Fire1") > 0 && _can_click) {
+						_can_click = false;
+						hit.collider.SendMessage("valid_new_kind", _current_input, SendMessageOptions.DontRequireReceiver);
+					}
 				}
-
-				GUI.matrix = Matrix4x4.identity;
 
 			break;
 			case STATE_ANIMATION:
@@ -221,12 +293,28 @@ public class Manager : MonoBehaviour {
 					init_menu_state();
 				}
 			break;
+		}
 
+		if (Input.GetAxis("Fire1") == 0) {
+			_can_click = true;
 		}
 	}
 
 	static bool is_mouse_hover (float x, float y, float w, float h) {
 
 		return Input.mousePosition.x > x && Input.mousePosition.x < x+w && Screen.height-Input.mousePosition.y > y && Screen.height-Input.mousePosition.y < y+h;
+	}
+
+	void increase_input_amount (byte input) {
+
+		_inputs_amounts[input]++;
+		_current_input = Map.HOLE;
+	}
+
+	void decrease_input_amount (byte input) {
+
+		if (--_inputs_amounts[input] == 0) {
+			_current_input = Map.HOLE;
+		}
 	}
 }

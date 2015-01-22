@@ -199,7 +199,7 @@ public class Moving_cube : MonoBehaviour {
 	}
 	
 	bool is_inside_map_cell (int[] pos) {
-		
+
 		return 	pos[0]>=0 && pos[0]<Map.map_cells.GetLength(0)
 				&& pos[1]>=0 && pos[1]<Map.map_cells.GetLength(1)
 				&& pos[2]>=0 && pos[2]<Map.map_cells.GetLength(2);

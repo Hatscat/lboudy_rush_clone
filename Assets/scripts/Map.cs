@@ -29,7 +29,8 @@ public class Map : MonoBehaviour {
 	public static List<int> map_warps;
 	public static int map_size, cols_nb, rows_nb, floors_nb;
 
-	public Texture2D[] mapLvl1, mapLvl2, mapLvl3;
+	public GameObject[] lvlInfos;
+	//public Texture2D[] mapLvl1, mapLvl2, mapLvl3;
 	public GameObject mapCube;
 	public Material blank, spawnR, spawnG, spawnB, extracR, extracG, extracB, warpY, warpP, warpC, arrow, conv, split, stop;
 
@@ -76,15 +77,17 @@ public class Map : MonoBehaviour {
 	void Init_map_next () {
 
 		map_warps = new List<int>();
-		
+		//print(Manager.current_lvl_nb);
+		init_map_cells(lvlInfos[Manager.current_lvl_nb-1].GetComponent<Lvl_infos>().levelDesign);
+
 		switch (Manager.current_lvl_nb) {
 			case 1:
-				init_map_cells(mapLvl1);
+				//init_map_cells(mapLvl1);
 				// tmp set some player cells manually here :
 				set_cell(5, 4, 2, SPLIT_CELL);
 			break;
 			case 2:
-				init_map_cells(mapLvl2);
+				//init_map_cells(mapLvl2);
 				// tmp set some player cells manually here :
 				set_cell(14, 6, 1, ARROW_CELL*DIR_RIGHT);
 				set_cell(18, 6, 1, ARROW_CELL*DIR_UP);
@@ -115,7 +118,7 @@ public class Map : MonoBehaviour {
 
 			break;
 			case 3:
-				init_map_cells(mapLvl3);
+				//init_map_cells(mapLvl3);
 				// tmp set some player cells manually here :
 				set_cell(7, 8, 2, SPLIT_CELL);
 			break;
@@ -306,4 +309,5 @@ public class Map : MonoBehaviour {
 			}
 		}
 	}
+
 }
